@@ -35,10 +35,13 @@ func UsersRouter(w http.ResponseWriter, r *http.Request) {
 		usersGetOne(w, r, id)
 		return
 	case http.MethodPut:
+		usersPutOne(w, r, id)
 		return
 	case http.MethodPatch:
+		usersPatchOne(w, r, id)
 		return
 	case http.MethodDelete:
+		usersDeleteOne(w, r, id)
 		return
 	default:
 		postError(w, http.StatusMethodNotAllowed)

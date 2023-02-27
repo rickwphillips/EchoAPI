@@ -21,7 +21,8 @@ const (
 )
 
 var (
-	ErrRecordInvalid = errors.New("record is invalid")
+	ErrRecordInvalid  = errors.New("record is invalid")
+	ErrUniqueUsername = errors.New("username must be unique")
 )
 
 // All Get all users from the database
@@ -95,4 +96,21 @@ func (u *User) validate() error {
 		return ErrRecordInvalid
 	}
 	return nil
+}
+
+// ValidateUsername Ensure user_name is unique
+func (u *User) ValidateUsername() error {
+	db, err := storm.Open(dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	err = db.One("Name", u.Name, u)
+
+	if err == storm.ErrNotFound {
+		return nil
+	}
+
+	return ErrUniqueUsername
 }
