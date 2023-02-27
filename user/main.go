@@ -76,7 +76,7 @@ func Delete(id bson.ObjectId) error {
 }
 
 // Save Create or update the provided user
-func Save(u *User) error {
+func (u *User) Save() error {
 	if err := u.validate(); err != nil {
 		return err
 	}
