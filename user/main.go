@@ -81,6 +81,9 @@ func (u *User) Save() error {
 	if err := u.validate(); err != nil {
 		return err
 	}
+	if err := u.ValidateUsername(); err != nil {
+		return err
+	}
 
 	db, err := storm.Open(dbPath)
 	if err != nil {
@@ -106,9 +109,9 @@ func (u *User) ValidateUsername() error {
 	}
 	defer db.Close()
 
-	err = db.One("Name", u.Name, u)
-
-	if err == storm.ErrNotFound {
+	u2 := User{}
+	err = db.One("Name", u.Name, &u2)
+	if err == storm.ErrNotFound || u2.ID == u.ID {
 		return nil
 	}
 
