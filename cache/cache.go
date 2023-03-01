@@ -29,13 +29,12 @@ func set(resource string, response *response) {
 		cache.data[resource] = *response
 	}
 	cache.lock.Unlock()
-
 }
 
 func get(resource string) *response {
 	cache.lock.RLock()
 	resp, ok := cache.data[resource]
-	cache.lock.Unlock()
+	cache.lock.RUnlock()
 	if ok {
 		return &resp
 	}
@@ -50,6 +49,7 @@ func copyHeader(src, dst http.Header) {
 	}
 }
 
+// MakeResource returns a valid cache resource
 func MakeResource(r *http.Request) string {
 	if r == nil {
 		return ""
@@ -57,35 +57,32 @@ func MakeResource(r *http.Request) string {
 	return strings.TrimSuffix(r.URL.RequestURI(), "/")
 }
 
+// Clean removes all cache entries
 func Clean() {
 	cache.lock.Lock()
 	cache.data = map[string]response{}
 	cache.lock.Unlock()
 }
 
+// Drop removes a cache entry
 func Drop(res string) {
 	set(res, nil)
 }
 
-// Serve Determine if cached data can or should be served
+// Serve function returns true if a cached response was successfully served
 func Serve(w http.ResponseWriter, r *http.Request) bool {
-	// Check for bad requests
 	if w == nil || r == nil {
 		return false
 	}
-	// Check for no-cache
 	if r.Header.Get("Cache-Control") == "no-cache" {
 		return false
 	}
-	// Check the resources
 	resp := get(MakeResource(r))
 	if resp == nil {
 		return false
 	}
-
 	copyHeader(resp.header, w.Header())
 	w.WriteHeader(resp.code)
-
 	if r.Method != http.MethodHead {
 		_, err := w.Write(resp.body)
 		if err != nil {
