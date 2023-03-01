@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"EchoAPI/cache"
 	"EchoAPI/user"
 	"encoding/json"
 	"errors"
@@ -11,13 +12,17 @@ import (
 )
 
 // usersGetAll Get list of all users
-func usersGetAll(w http.ResponseWriter, _ *http.Request) {
+func usersGetAll(w http.ResponseWriter, r *http.Request) {
+	if cache.Serve(w, r) {
+		return
+	}
 	users, err := user.All()
 	if err != nil {
 		postError(w, http.StatusInternalServerError)
 		return
 	}
-	postBodyResponse(w, http.StatusOK, jsonResponse{"users": users})
+	cw := cache.NewWriter(w, r)
+	postBodyResponse(cw, http.StatusOK, jsonResponse{"users": users})
 }
 
 func bodyToUser(r *http.Request, u *user.User) error {
@@ -67,13 +72,17 @@ func usersPostOne(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cache.Drop("/users")
 	w.Header().Set("Location", "/users/"+u.ID.Hex())
 	w.WriteHeader(http.StatusCreated)
 
 }
 
 // usersGetOne Get a single user
-func usersGetOne(w http.ResponseWriter, _ *http.Request, id bson.ObjectId) {
+func usersGetOne(w http.ResponseWriter, r *http.Request, id bson.ObjectId) {
+	if cache.Serve(w, r) {
+		return
+	}
 	u, err := user.One(id)
 	if err != nil {
 		if err == storm.ErrNotFound {
@@ -83,7 +92,8 @@ func usersGetOne(w http.ResponseWriter, _ *http.Request, id bson.ObjectId) {
 		postError(w, http.StatusInternalServerError)
 		return
 	}
-	postBodyResponse(w, http.StatusOK, jsonResponse{"user": u})
+	cw := cache.NewWriter(w, r)
+	postBodyResponse(cw, http.StatusOK, jsonResponse{"user": u})
 }
 
 // usersPutOne Replace a single user
@@ -115,8 +125,9 @@ func usersPutOne(w http.ResponseWriter, r *http.Request, id bson.ObjectId) {
 		postError(w, http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Location", "/users/"+u.ID.Hex())
-	w.WriteHeader(http.StatusOK)
+	cache.Drop("/users")
+	cw := cache.NewWriter(w, r)
+	postBodyResponse(cw, http.StatusOK, jsonResponse{"user": u})
 
 }
 
@@ -146,12 +157,13 @@ func usersPatchOne(w http.ResponseWriter, r *http.Request, id bson.ObjectId) {
 		postError(w, http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Location", "/users/"+u.ID.Hex())
-	w.WriteHeader(http.StatusOK)
+	cache.Drop("/users")
+	cw := cache.NewWriter(w, r)
+	postBodyResponse(cw, http.StatusOK, jsonResponse{"user": u})
 
 }
 
-func usersDeleteOne(w http.ResponseWriter, _ *http.Request, id bson.ObjectId) {
+func usersDeleteOne(w http.ResponseWriter, r *http.Request, id bson.ObjectId) {
 	err := user.Delete(id)
 	if err != nil {
 		if err == storm.ErrNotFound {
@@ -161,5 +173,7 @@ func usersDeleteOne(w http.ResponseWriter, _ *http.Request, id bson.ObjectId) {
 		postError(w, http.StatusInternalServerError)
 		return
 	}
+	cache.Drop("/users")
+	cache.Drop(cache.MakeResource(r))
 	w.WriteHeader(http.StatusOK)
 }
