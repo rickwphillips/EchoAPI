@@ -57,15 +57,18 @@ func usersPostOne(c echo.Context) error {
 	u := new(user.User)
 	err := c.Bind(u)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest)
+		return echo.NewHTTPError(http.StatusBadRequest, "Cannot bind")
 	}
 	u.ID = bson.NewObjectId()
 	err = u.Save()
 	if err != nil {
 		if err == user.ErrRecordInvalid {
-			return echo.NewHTTPError(http.StatusBadRequest)
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid record")
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		if err == user.ErrUniqueUsername {
+			return echo.NewHTTPError(http.StatusBadRequest, "Username must be unique")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unknown error")
 	}
 	cache.Drop("/users")
 	c.Response().Header().Set("Location", "/users/"+u.ID.Hex())
@@ -108,6 +111,9 @@ func usersPutOne(c echo.Context) error {
 	if err != nil {
 		if err == user.ErrRecordInvalid {
 			return echo.NewHTTPError(http.StatusBadRequest)
+		}
+		if err == user.ErrUniqueUsername {
+			return echo.NewHTTPError(http.StatusBadRequest, "Username must be unique")
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
